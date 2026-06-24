@@ -1,494 +1,952 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Film Archive</title>
-    <!-- ใช้ฟอนต์สไตล์ Criterion -->
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #f7f6f2; /* สีพื้นหลังสไตล์กระดาษ/มินิมอล */
-            --text-color: #222;
-            --accent-color: #d92525; /* สีแดงสไตล์ Criterion */
-            --border-color: #ddd;
-        }
-
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-        }
-
-        h1, h2, h3, .serif {
-            font-family: 'Playfair Display', serif;
-        }
-
-        /* --- Header & Stats --- */
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        header h1 {
-            font-size: 3rem;
-            margin: 0 0 10px 0;
-            letter-spacing: 2px;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            font-size: 0.9rem;
-            color: #555;
-            margin-bottom: 20px;
-        }
-
-        .stats div {
-            padding: 5px 15px;
-            border-left: 2px solid var(--accent-color);
-        }
-
-        /* --- Controls (Search & Filter) --- */
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-        }
-
-        input, select, button, textarea {
-            padding: 8px 12px;
-            font-family: 'Sarabun', sans-serif;
-            border: 1px solid var(--border-color);
-            background: #fff;
-            border-radius: 4px;
-        }
-
-        button {
-            cursor: pointer;
-            background-color: var(--text-color);
-            color: #fff;
-            border: none;
-            transition: 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--accent-color);
-        }
-
-        /* --- Movie Grid & Cards --- */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .card {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-            cursor: pointer;
-        }
-
-        /* 🎬 โปสเตอร์แบบ hover ซูม */
-        .poster-wrapper {
-            width: 100%;
-            height: 330px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .poster-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.4s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-        }
-
-        .card:hover .poster-wrapper img {
-            transform: scale(1.08); /* ขยายภาพนิดหน่อยเมื่อโฮเวอร์ */
-        }
-
-        /* 🏷️ Badge สถานะ */
-        .badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 4px 8px;
-            font-size: 0.75rem;
-            border-radius: 12px;
-            z-index: 10;
-            cursor: pointer;
-            user-select: none;
-        }
-        .badge.ดูแล้ว { background: #28a745; }
-        .badge.อยากดู { background: var(--accent-color); }
-        .badge.ยังไม่ดู { background: #6c757d; }
-
-        .card-info {
-            padding: 15px;
-        }
-
-        .card-title {
-            font-size: 1.2rem;
-            margin: 0 0 5px 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .card-meta {
-            font-size: 0.8rem;
-            color: #777;
-            margin-bottom: 10px;
-        }
-
-        /* ⭐ เรตติ้ง */
-        .ratings {
-            font-size: 0.8rem;
-            display: flex;
-            justify-content: space-between;
-            border-top: 1px solid var(--border-color);
-            padding-top: 10px;
-            margin-top: 10px;
-        }
-        .ratings span { font-weight: bold; }
-
-        /* --- Modal (ฟอร์มเพิ่ม/แก้ไข) --- */
-        dialog {
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            padding: 30px;
-            width: 90%;
-            max-width: 500px;
-            background: var(--bg-color);
-        }
-        
-        dialog::backdrop {
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(3px);
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 10px;
-        }
-        .form-row .form-group { flex: 1; }
-
-        .dialog-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HorrorVault TMDB Test</title>
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --panel:#141822;
+      --panel2:#1a2030;
+      --text:#f5f7fb;
+      --muted:#a5aec2;
+      --red:#e50914;
+      --red2:#ff4b59;
+      --line:rgba(255,255,255,.08);
+      --green:#1db954;
+      --yellow:#f5a623;
+      --gray:#7d8597;
+      --blue:#52d8ff;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:Inter,"Segoe UI",Tahoma,Verdana,sans-serif;
+      background:linear-gradient(180deg,#08090d 0%,#10131c 50%,#0a0c12 100%);
+      color:var(--text);
+      min-height:100vh;
+    }
+    .container{width:min(1380px,calc(100% - 32px));margin:0 auto}
+    .topbar{
+      position:sticky;top:0;z-index:50;
+      background:rgba(8,9,13,.82);
+      backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .topbar-inner{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;
+      padding:16px 0;flex-wrap:wrap;
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-logo{
+      width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+      background:linear-gradient(135deg,var(--red),#ff7b00);
+      box-shadow:0 12px 28px rgba(229,9,20,.3);
+      font-size:24px;
+    }
+    .brand-name{font-size:1.7rem;font-weight:800;color:#ff646c}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .search-box{position:relative;min-width:280px}
+    .search-box input{
+      width:100%;padding:13px 16px 13px 42px;border-radius:999px;border:1px solid var(--line);
+      background:rgba(255,255,255,.05);color:white;outline:none;
+    }
+    .search-box span{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+    button,select,input,textarea{font:inherit}
+    select,.btn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      color:white;
+      border-radius:999px;
+      padding:12px 16px;
+      cursor:pointer;
+    }
+    .btn-primary{
+      background:linear-gradient(135deg,var(--red),var(--red2));
+      border:none;
+      font-weight:700;
+    }
+    .hero{
+      padding:42px 0 24px;
+      border-bottom:1px solid rgba(255,255,255,.05);
+      background:
+        linear-gradient(90deg,rgba(8,8,12,.95) 0%,rgba(8,8,12,.8) 48%,rgba(8,8,12,.6) 100%),
+        url('[images.unsplash.com](https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1600&auto=format&fit=crop)') center/cover no-repeat;
+    }
+    .hero h1{font-size:clamp(2rem,5vw,4rem);line-height:1.05;max-width:760px;margin-bottom:10px}
+    .hero p{max-width:760px;color:#d1d6e3;line-height:1.8;margin-bottom:18px}
+    .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+    .status-bar{
+      margin-top:18px;
+      padding:14px 16px;
+      border-radius:16px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      color:#dbe1ef;
+      line-height:1.6;
+    }
+    .status-ok{border-color:rgba(29,185,84,.35);background:rgba(29,185,84,.12)}
+    .status-error{border-color:rgba(229,9,20,.35);background:rgba(229,9,20,.12)}
+    .section{padding:28px 0}
+    .section-head{
+      display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .section-title{font-size:1.45rem;font-weight:800}
+    .section-sub{margin-top:6px;color:var(--muted)}
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+      gap:22px;
+    }
+    .card{
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:22px;
+      overflow:hidden;
+      cursor:pointer;
+      transition:.25s ease;
+    }
+    .card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.14)}
+    .poster{position:relative;aspect-ratio:2/3;background:#111522;overflow:hidden}
+    .poster img{width:100%;height:100%;object-fit:cover;display:block}
+    .poster::after{
+      content:"";position:absolute;inset:0;
+      background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.15) 40%,rgba(0,0,0,.92) 100%);
+    }
+    .badge{
+      position:absolute;top:14px;left:14px;z-index:2;
+      padding:8px 12px;border-radius:999px;font-size:.8rem;font-weight:700;
+      border:1px solid rgba(255,255,255,.12)
+    }
+    .watched{background:rgba(29,185,84,.9)}
+    .watchlist{background:rgba(245,166,35,.9)}
+    .unwatched{background:rgba(125,133,151,.9)}
+    .rating{
+      position:absolute;left:0;right:0;bottom:0;z-index:2;
+      display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:18px 14px 14px;
+    }
+    .rate{text-align:center}
+    .rate-k{font-size:.74rem;color:#cbd2df;margin-bottom:4px}
+    .rate-v{font-size:1.2rem;font-weight:800}
+    .tmdb{color:var(--blue)}
+    .mine{color:#ff8e96}
+    .card-body{padding:16px}
+    .movie-title{font-size:1.15rem;font-weight:800;line-height:1.25;margin-bottom:10px}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+    .meta span{
+      font-size:.8rem;border-radius:999px;padding:5px 10px;
+      color:#ffc4c8;background:rgba(229,9,20,.08);border:1px solid rgba(255,100,110,.14)
+    }
+    .overview{
+      font-size:.94rem;line-height:1.65;color:#dce2ee;
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+    }
+    .empty{
+      display:none;text-align:center;padding:56px 22px;border-radius:24px;
+      border:1px dashed rgba(255,255,255,.12);color:var(--muted);background:rgba(255,255,255,.03)
+    }
+    .fab{
+      position:fixed;right:24px;bottom:24px;width:70px;height:70px;border-radius:50%;
+      border:none;background:linear-gradient(135deg,var(--red),var(--red2));color:white;
+      font-size:2rem;cursor:pointer;box-shadow:0 18px 40px rgba(229,9,20,.35);z-index:40;
+    }
+    .modal{
+      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      padding:20px;background:rgba(0,0,0,.74);backdrop-filter:blur(10px);z-index:100;
+    }
+    .modal.active{display:flex}
+    .modal-card{
+      width:min(1100px,100%);max-height:92vh;overflow:auto;border-radius:26px;
+      background:#0f121b;border:1px solid rgba(255,255,255,.08)
+    }
+    .close-btn{
+      position:absolute;top:16px;right:16px;z-index:3;width:44px;height:44px;border-radius:50%;
+      border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.46);color:white;cursor:pointer;
+    }
+    .modal-wrap{position:relative}
+    .detail-hero{
+      min-height:340px;display:flex;align-items:end;padding:24px;
+      background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.9));
+      background-size:cover;background-position:center;
+    }
+    .detail-grid{display:grid;grid-template-columns:240px 1fr;gap:22px;align-items:end;width:100%}
+    .detail-poster{border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+    .detail-poster img{width:100%;aspect-ratio:2/3;object-fit:cover}
+    .detail-info h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:10px;line-height:1.05}
+    .subline{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+    .subline span{
+      padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)
+    }
+    .detail-content{
+      display:grid;grid-template-columns:1.5fr 1fr;gap:22px;padding:24px
+    }
+    .panel{
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:20px;padding:18px
+    }
+    .panel h3{margin-bottom:14px}
+    .cast-list{display:flex;flex-wrap:wrap;gap:10px}
+    .cast-chip{
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;padding:9px 12px
+    }
+    .kv{display:grid;gap:12px}
+    .kv-item{padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .kv-item:last-child{border-bottom:none;padding-bottom:0}
+    .kv-k{font-size:.84rem;color:var(--muted);margin-bottom:4px}
+    .kv-v{line-height:1.6}
+    .form-wrap{padding:24px}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .form-group{display:grid;gap:8px}
+    .full{grid-column:1 / -1}
+    label{font-size:.92rem;color:#d4daea}
+    input,textarea,select{
+      width:100%;background:rgba(255,255,255,.05);color:white;
+      border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:13px 14px;outline:none
+    }
+    textarea{min-height:110px;resize:vertical}
+    .form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+    .small-muted{color:var(--muted);line-height:1.7}
+    @media (max-width: 900px){
+      .detail-grid,.detail-content{grid-template-columns:1fr}
+      .detail-poster{max-width:260px}
+    }
+    @media (max-width: 760px){
+      .search-box{min-width:100%}
+      .cards{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+      .form-grid{grid-template-columns:1fr}
+      .fab{width:62px;height:62px}
+    }
+  </style>
 </head>
 <body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <div class="brand-logo">🎃</div>
+        <div class="brand-name">HorrorVault</div>
+      </div>
 
-    <header>
-        <h1 class="serif">The Film Archive</h1>
-        <!-- 📊 สถิติด้านบน -->
-        <div class="stats" id="stats-container">
-            <!-- Render by JS -->
+      <div class="toolbar">
+        <div class="search-box">
+          <span>🔎</span>
+          <input id="searchInput" type="text" placeholder="ค้นหาหนัง..." />
         </div>
-        
-        <!-- 🔍 ค้นหา + กรอง -->
-        <div class="controls">
-            <input type="text" id="search-input" placeholder="ค้นหาชื่อภาพยนตร์..." oninput="renderMovies()">
-            <select id="filter-genre" onchange="renderMovies()">
-                <option value="">ทุกประเภท</option>
-                <option value="Horror">Horror</option>
-                <option value="Thriller">Thriller</option>
-                <option value="Action">Action</option>
-                <option value="Drama">Drama</option>
-            </select>
-            <select id="filter-status" onchange="renderMovies()">
-                <option value="">ทุกสถานะ</option>
-                <option value="ดูแล้ว">ดูแล้ว</option>
-                <option value="อยากดู">อยากดู</option>
-                <option value="ยังไม่ดู">ยังไม่ดู</option>
-            </select>
-            <button onclick="openModal()">+ เพิ่มภาพยนตร์</button>
+
+        <select id="browseMode">
+          <option value="trending">Trending</option>
+          <option value="top_rated">Top Rated</option>
+          <option value="collection">My Collection</option>
+        </select>
+
+        <select id="statusFilter">
+          <option value="">ทุกสถานะ</option>
+          <option value="watched">ดูแล้ว</option>
+          <option value="watchlist">อยากดู</option>
+          <option value="unwatched">ยังไม่ดู</option>
+        </select>
+
+        <button class="btn" id="reloadBtn">รีโหลด</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <h1>ทดสอบ TMDB ให้ชัดก่อน แล้วค่อยแต่งต่อ</h1>
+      <p>
+        เวอร์ชันนี้ตั้งใจทำมาเพื่อเช็กให้รู้ชัด ๆ ว่า TMDB ใช้งานได้หรือไม่
+        ถ้า key ใช้ได้ เปิดมาควรเห็น Trending Horror ทันที
+      </p>
+
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="testTmdbBtn">ทดสอบ TMDB</button>
+        <button class="btn" id="addMovieBtn">+ เพิ่มหนังเอง</button>
+      </div>
+
+      <div id="statusBox" class="status-bar">
+        กำลังเตรียมระบบ...
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-title" id="sectionTitle">Trending Horror</div>
+          <div class="section-sub" id="sectionSub">ถ้า TMDB ใช้งานได้ หนังจะขึ้นตรงนี้</div>
         </div>
-    </header>
+      </div>
 
-    <!-- พื้นที่แสดงการ์ดหนัง -->
-    <main class="grid" id="movie-grid"></main>
+      <div class="cards" id="movieGrid"></div>
+      <div class="empty" id="emptyState">
+        <div style="font-size:3rem;margin-bottom:10px;">👻</div>
+        <h3 style="margin-bottom:8px;">ยังไม่มีหนังขึ้นมา</h3>
+        <p>ถ้าใส่ key แล้วแต่ไม่ขึ้น แปลว่า request ไป TMDB มีปัญหา</p>
+      </div>
+    </section>
+  </main>
 
-    <!-- ✏️ Modal เพิ่ม/แก้ไขหนัง -->
-    <dialog id="movie-modal">
-        <h2 class="serif" id="modal-title">เพิ่มภาพยนตร์</h2>
-        <form id="movie-form" onsubmit="saveMovie(event)">
-            <input type="hidden" id="movie-id">
-            
-            <div class="form-group">
-                <label>ชื่อภาพยนตร์</label>
-                <input type="text" id="m-title" required>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>ปีที่ฉาย</label>
-                    <input type="number" id="m-year" required>
-                </div>
-                <div class="form-group">
-                    <label>ประเภท (Genre)</label>
-                    <input type="text" id="m-genre" placeholder="เช่น Horror, Thriller" required>
-                </div>
-            </div>
+  <button class="fab" id="fabBtn">+</button>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>ประเทศ</label>
-                    <input type="text" id="m-country" required>
-                </div>
-                <div class="form-group">
-                    <label>สถานะ</label>
-                    <select id="m-status">
-                        <option value="ยังไม่ดู">ยังไม่ดู</option>
-                        <option value="ดูแล้ว">ดูแล้ว</option>
-                        <option value="อยากดู">อยากดู</option>
-                    </select>
-                </div>
+  <div class="modal" id="detailModal">
+    <div class="modal-card modal-wrap">
+      <button class="close-btn" onclick="closeModal('detailModal')">✕</button>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="editModal">
+    <div class="modal-card modal-wrap" style="max-width:760px;">
+      <button class="close-btn" onclick="closeModal('editModal')">✕</button>
+      <div class="form-wrap">
+        <h2 style="margin-bottom:8px;">เพิ่ม/แก้ไขหนัง</h2>
+        <p class="small-muted" style="margin-bottom:18px;">
+          ใช้ได้แม้ TMDB จะยังไม่ทำงาน
+        </p>
+
+        <form id="editForm">
+          <input type="hidden" id="editMovieId" />
+
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>ชื่อหนัง</label>
+              <input type="text" id="editTitleVisible" required />
             </div>
 
             <div class="form-group">
-                <label>URL โปสเตอร์หนัง</label>
-                <input type="url" id="m-poster" placeholder="https://..." required>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>IMDb Rating</label>
-                    <input type="number" step="0.1" max="10" id="m-imdb">
-                </div>
-                <div class="form-group">
-                    <label>Rotten Tomatoes (%)</label>
-                    <input type="number" max="100" id="m-rt">
-                </div>
-                <div class="form-group">
-                    <label>คะแนนส่วนตัว (10)</label>
-                    <input type="number" step="0.5" max="10" id="m-personal">
-                </div>
+              <label>ปีฉาย</label>
+              <input type="number" id="editYear" min="1900" max="2100" />
             </div>
 
             <div class="form-group">
-                <label>รีวิวสั้น ๆ / บันทึกย่อ</label>
-                <textarea id="m-review" rows="3"></textarea>
+              <label>สถานะ</label>
+              <select id="editStatus">
+                <option value="watched">ดูแล้ว</option>
+                <option value="watchlist">อยากดู</option>
+                <option value="unwatched">ยังไม่ดู</option>
+              </select>
             </div>
 
-            <div class="dialog-actions">
-                <button type="button" onclick="closeModal()" style="background:#ccc; color:#000;">ยกเลิก</button>
-                <button type="button" id="btn-delete" onclick="deleteMovie()" style="background:var(--accent-color); display:none;">ลบข้อมูล</button>
-                <button type="submit">บันทึกข้อมูล</button>
+            <div class="form-group">
+              <label>คะแนนส่วนตัว</label>
+              <input type="number" id="editPersonalRating" min="0" max="10" step="0.5" />
             </div>
+
+            <div class="form-group">
+              <label>คะแนน TMDB</label>
+              <input type="number" id="editTmdbRatingVisible" min="0" max="10" step="0.1" />
+            </div>
+
+            <div class="form-group full">
+              <label>ลิงก์โปสเตอร์</label>
+              <input type="text" id="editPosterVisible" />
+            </div>
+
+            <div class="form-group full">
+              <label>ลิงก์ backdrop</label>
+              <input type="text" id="editBackdropVisible" />
+            </div>
+
+            <div class="form-group full">
+              <label>เรื่องย่อ</label>
+              <textarea id="editOverviewVisible"></textarea>
+            </div>
+
+            <div class="form-group full">
+              <label>นักแสดง</label>
+              <textarea id="editCastVisible"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>ผู้กำกับ</label>
+              <input type="text" id="editDirectorVisible" />
+            </div>
+
+            <div class="form-group">
+              <label>ความยาว (นาที)</label>
+              <input type="number" id="editRuntimeVisible" min="1" />
+            </div>
+
+            <div class="form-group full">
+              <label>ลิงก์ตัวอย่างหนัง YouTube</label>
+              <input type="text" id="editTrailerVisible" />
+            </div>
+
+            <div class="form-group full">
+              <label>รีวิว</label>
+              <textarea id="editReview"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn" onclick="closeModal('editModal')">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary">บันทึก</button>
+          </div>
         </form>
-    </dialog>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        // 💾 บันทึกและดึงข้อมูลจาก localStorage (แถมข้อมูลเริ่มต้นให้เห็นภาพ)
-        const defaultData = [
-            { id: 1680000000000, title: "The Evil Dead", year: 1981, genre: "Horror", country: "USA", status: "ดูแล้ว", imdb: 7.4, rt: 95, personal: 9.0, review: "คลาสสิก ดิบ และเป็นการเปิดตำนาน", poster: "https://image.tmdb.org/t/p/w500/iSihHkZ0qG1R0T2z8QItlBnm9lG.jpg" },
-            { id: 1680000000001, title: "Resident Evil", year: 2002, genre: "Horror", country: "Germany/UK", status: "ดูแล้ว", imdb: 6.6, rt: 35, personal: 7.5, review: "บรรยากาศดี แอคชั่นสนุก", poster: "https://image.tmdb.org/t/p/w500/ftmDEXNla0w8A0pXXtP05g7L1z8.jpg" },
-            { id: 1680000000002, title: "Parasite", year: 2019, genre: "Thriller", country: "South Korea", status: "อยากดู", imdb: 8.5, rt: 99, personal: "", review: "", poster: "https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg" }
-        ];
+  <script>
+    const TMDB_API_KEY = "d05521f5c71cc160d76bbb403a460e61";
+    const TMDB_BASE = "[api.themoviedb.org](https://api.themoviedb.org/3)";
+    const TMDB_IMG = "[image.tmdb.org](https://image.tmdb.org/t/p/w500)";
+    const TMDB_BACKDROP = "[image.tmdb.org](https://image.tmdb.org/t/p/original)";
+    const HORROR_GENRE_ID = 27;
 
-        let movies = JSON.parse(localStorage.getItem('criterion_movies'));
-        if (!movies) {
-            movies = defaultData;
-            saveToStorage();
+    const state = {
+      browseMode: "trending",
+      search: "",
+      statusFilter: "",
+      movies: [],
+      personal: loadPersonalData(),
+      tmdbCache: {}
+    };
+
+    const els = {
+      movieGrid: document.getElementById("movieGrid"),
+      emptyState: document.getElementById("emptyState"),
+      searchInput: document.getElementById("searchInput"),
+      browseMode: document.getElementById("browseMode"),
+      statusFilter: document.getElementById("statusFilter"),
+      sectionTitle: document.getElementById("sectionTitle"),
+      sectionSub: document.getElementById("sectionSub"),
+      statusBox: document.getElementById("statusBox"),
+      detailContent: document.getElementById("detailContent")
+    };
+
+    function loadPersonalData() {
+      try {
+        return JSON.parse(localStorage.getItem("horrorVaultPersonal") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function savePersonalData() {
+      localStorage.setItem("horrorVaultPersonal", JSON.stringify(state.personal));
+    }
+
+    function escapeHtml(str = "") {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function yearFromDate(dateStr) {
+      if (!dateStr) return "-";
+      return String(dateStr).slice(0, 4);
+    }
+
+    function buildPoster(path) {
+      if (!path) return "[via.placeholder.com](https://via.placeholder.com/500x750/12141b/f5f7fb?text=No+Poster)";
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      return TMDB_IMG + path;
+    }
+
+    function buildBackdrop(path) {
+      if (!path) return "[images.unsplash.com](https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1600&auto=format&fit=crop)";
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      return TMDB_BACKDROP + path;
+    }
+
+    function getStatusLabel(status) {
+      return {
+        watched: "ดูแล้ว",
+        watchlist: "อยากดู",
+        unwatched: "ยังไม่ดู"
+      }[status] || "ยังไม่ดู";
+    }
+
+    function getStatusClass(status) {
+      return {
+        watched: "watched",
+        watchlist: "watchlist",
+        unwatched: "unwatched"
+      }[status] || "unwatched";
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add("active");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("active");
+    }
+
+    document.querySelectorAll(".modal").forEach(modal => {
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.classList.remove("active");
+      });
+    });
+
+    function setStatus(message, ok = false, error = false) {
+      els.statusBox.textContent = message;
+      els.statusBox.className = "status-bar";
+      if (ok) els.statusBox.classList.add("status-ok");
+      if (error) els.statusBox.classList.add("status-error");
+    }
+
+    async function tmdbFetch(path, params = {}) {
+      if (!TMDB_API_KEY || TMDB_API_KEY === "PUT_YOUR_TMDB_API_KEY_HERE") {
+        throw new Error("ยังไม่ได้ใส่ TMDB API key ในไฟล์");
+      }
+
+      const url = new URL(TMDB_BASE + path);
+      url.searchParams.set("api_key", TMDB_API_KEY);
+      url.searchParams.set("language", "en-US");
+
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null && v !== "") {
+          url.searchParams.set(k, v);
+        }
+      }
+
+      const res = await fetch(url);
+      const text = await res.text();
+
+      if (!res.ok) {
+        throw new Error("TMDB error: " + res.status + " " + text);
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("TMDB ตอบกลับมาไม่ใช่ JSON");
+      }
+    }
+
+    function mergeWithPersonal(movie) {
+      const p = state.personal[String(movie.id)] || {};
+      return {
+        ...movie,
+        personalStatus: p.status || movie.personalStatus || "unwatched",
+        personalRating: p.personalRating ?? movie.personalRating ?? null,
+        personalReview: p.review || movie.personalReview || ""
+      };
+    }
+
+    function collectionMovies() {
+      return Object.values(state.personal).map(item => ({
+        id: item.id,
+        title: item.title,
+        poster_path: item.poster_path || null,
+        backdrop_path: item.backdrop_path || null,
+        release_date: item.release_date || "",
+        vote_average: item.vote_average || 0,
+        overview: item.overview || "",
+        cast: item.cast || [],
+        director: item.director || "",
+        runtime: item.runtime || null,
+        trailer: item.trailer || "",
+        personalStatus: item.status || "unwatched",
+        personalRating: item.personalRating ?? null,
+        personalReview: item.review || ""
+      }));
+    }
+
+    function renderMovies() {
+      let list = state.movies;
+
+      const term = state.search.trim().toLowerCase();
+      if (term) {
+        list = list.filter(movie =>
+          (movie.title || "").toLowerCase().includes(term) ||
+          (movie.overview || "").toLowerCase().includes(term) ||
+          (movie.director || "").toLowerCase().includes(term)
+        );
+      }
+
+      if (state.statusFilter) {
+        list = list.filter(movie => movie.personalStatus === state.statusFilter);
+      }
+
+      els.movieGrid.innerHTML = "";
+      els.emptyState.style.display = list.length ? "none" : "block";
+
+      list.forEach(movie => {
+        const merged = mergeWithPersonal(movie);
+
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="poster">
+            <span class="badge ${getStatusClass(merged.personalStatus)}">${getStatusLabel(merged.personalStatus)}</span>
+            <img src="${buildPoster(merged.poster_path)}" alt="${escapeHtml(merged.title)}" />
+            <div class="rating">
+              <div class="rate">
+                <div class="rate-k">TMDB</div>
+                <div class="rate-v tmdb">${merged.vote_average ? Number(merged.vote_average).toFixed(1) : "-"}</div>
+              </div>
+              <div class="rate">
+                <div class="rate-k">คะแนนฉัน</div>
+                <div class="rate-v mine">${merged.personalRating ? Number(merged.personalRating).toFixed(1) : "-"}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="movie-title">${escapeHtml(merged.title)}</div>
+            <div class="meta">
+              <span>${yearFromDate(merged.release_date)}</span>
+              <span>${escapeHtml(merged.director || "Horror")}</span>
+            </div>
+            <div class="overview">${escapeHtml(merged.personalReview || merged.overview || "ไม่มีเรื่องย่อ")}</div>
+          </div>
+        `;
+
+        card.addEventListener("click", () => openDetail(merged.id));
+        els.movieGrid.appendChild(card);
+      });
+    }
+
+    async function loadTrending() {
+      els.sectionTitle.textContent = "Trending Horror";
+      els.sectionSub.textContent = "กำลังโหลดหนังสยองขวัญจาก TMDB";
+
+      const data = await tmdbFetch("/trending/movie/week");
+      const results = (data.results || []).filter(m => (m.genre_ids || []).includes(HORROR_GENRE_ID));
+
+      state.movies = results.map(m => mergeWithPersonal({
+        id: m.id,
+        title: m.title,
+        poster_path: m.poster_path,
+        backdrop_path: m.backdrop_path,
+        release_date: m.release_date,
+        vote_average: m.vote_average,
+        overview: m.overview,
+        cast: [],
+        director: "",
+        runtime: null,
+        trailer: "",
+        personalStatus: "unwatched",
+        personalRating: null,
+        personalReview: ""
+      }));
+
+      setStatus("เชื่อม TMDB สำเร็จ - โหลด Trending Horror แล้ว", true, false);
+      renderMovies();
+    }
+
+    async function loadTopRated() {
+      els.sectionTitle.textContent = "Top Rated Horror";
+      els.sectionSub.textContent = "กำลังโหลดหนังสยองขวัญคะแนนสูงจาก TMDB";
+
+      const data = await tmdbFetch("/discover/movie", {
+        with_genres: HORROR_GENRE_ID,
+        sort_by: "vote_average.desc",
+        "vote_count.gte": 300,
+        page: 1
+      });
+
+      state.movies = (data.results || []).map(m => mergeWithPersonal({
+        id: m.id,
+        title: m.title,
+        poster_path: m.poster_path,
+        backdrop_path: m.backdrop_path,
+        release_date: m.release_date,
+        vote_average: m.vote_average,
+        overview: m.overview,
+        cast: [],
+        director: "",
+        runtime: null,
+        trailer: "",
+        personalStatus: "unwatched",
+        personalRating: null,
+        personalReview: ""
+      }));
+
+      setStatus("เชื่อม TMDB สำเร็จ - โหลด Top Rated Horror แล้ว", true, false);
+      renderMovies();
+    }
+
+    async function loadByMode() {
+      try {
+        if (state.browseMode === "collection") {
+          state.movies = collectionMovies();
+          els.sectionTitle.textContent = "My Collection";
+          els.sectionSub.textContent = "รายการหนังที่คุณเพิ่มเอง";
+          setStatus("ตอนนี้อยู่ในโหมด My Collection", false, false);
+          renderMovies();
+          return;
         }
 
-        const modal = document.getElementById('movie-modal');
-
-        function saveToStorage() {
-            localStorage.setItem('criterion_movies', JSON.stringify(movies));
+        if (state.browseMode === "trending") {
+          await loadTrending();
+          return;
         }
 
-        // 📊 อัปเดตสถิติ
-        function updateStats() {
-            const total = movies.length;
-            const watched = movies.filter(m => m.status === 'ดูแล้ว').length;
-            const want = movies.filter(m => m.status === 'อยากดู').length;
-            
-            // หาค่าเฉลี่ยคะแนนส่วนตัวเฉพาะเรื่องที่มีคะแนน
-            const ratedMovies = movies.filter(m => m.personal !== "" && m.personal !== null);
-            const avgRating = ratedMovies.length > 0 
-                ? (ratedMovies.reduce((sum, m) => sum + Number(m.personal), 0) / ratedMovies.length).toFixed(1) 
-                : '-';
-
-            document.getElementById('stats-container').innerHTML = `
-                <div><strong>${total}</strong> ทั้งหมด</div>
-                <div><strong>${watched}</strong> ดูแล้ว</div>
-                <div><strong>${want}</strong> อยากดู</div>
-                <div><strong>${avgRating}</strong> เรตติ้งเฉลี่ย</div>
-            `;
+        if (state.browseMode === "top_rated") {
+          await loadTopRated();
+          return;
         }
-
-        // เปลี่ยนสถานะโดยการคลิกที่ Badge
-        function toggleStatus(event, id) {
-            event.stopPropagation(); // ป้องกันไม่ให้ทะลุไปคลิกเปิดการ์ดแก้ไข
-            const movie = movies.find(m => m.id === id);
-            if(movie.status === 'ยังไม่ดู') movie.status = 'อยากดู';
-            else if(movie.status === 'อยากดู') movie.status = 'ดูแล้ว';
-            else movie.status = 'ยังไม่ดู';
-            
-            saveToStorage();
-            renderMovies();
-        }
-
-        // เปิดการ์ดเพื่อแก้ไข
-        function editMovie(id) {
-            const movie = movies.find(m => m.id === id);
-            document.getElementById('movie-id').value = movie.id;
-            document.getElementById('m-title').value = movie.title;
-            document.getElementById('m-year').value = movie.year;
-            document.getElementById('m-genre').value = movie.genre;
-            document.getElementById('m-country').value = movie.country;
-            document.getElementById('m-status').value = movie.status;
-            document.getElementById('m-poster').value = movie.poster;
-            document.getElementById('m-imdb').value = movie.imdb;
-            document.getElementById('m-rt').value = movie.rt;
-            document.getElementById('m-personal').value = movie.personal;
-            document.getElementById('m-review').value = movie.review;
-
-            document.getElementById('modal-title').innerText = "แก้ไขข้อมูล";
-            document.getElementById('btn-delete').style.display = "block";
-            modal.showModal();
-        }
-
-        function openModal() {
-            document.getElementById('movie-form').reset();
-            document.getElementById('movie-id').value = '';
-            document.getElementById('modal-title').innerText = "เพิ่มภาพยนตร์ใหม่";
-            document.getElementById('btn-delete').style.display = "none";
-            modal.showModal();
-        }
-
-        function closeModal() {
-            modal.close();
-        }
-
-        // บันทึก/อัปเดตข้อมูล
-        function saveMovie(e) {
-            e.preventDefault();
-            const id = document.getElementById('movie-id').value;
-            const movieData = {
-                id: id ? Number(id) : Date.now(),
-                title: document.getElementById('m-title').value,
-                year: document.getElementById('m-year').value,
-                genre: document.getElementById('m-genre').value,
-                country: document.getElementById('m-country').value,
-                status: document.getElementById('m-status').value,
-                poster: document.getElementById('m-poster').value,
-                imdb: document.getElementById('m-imdb').value,
-                rt: document.getElementById('m-rt').value,
-                personal: document.getElementById('m-personal').value,
-                review: document.getElementById('m-review').value
-            };
-
-            if (id) {
-                const index = movies.findIndex(m => m.id === Number(id));
-                movies[index] = movieData;
-            } else {
-                movies.push(movieData);
-            }
-
-            saveToStorage();
-            closeModal();
-            renderMovies();
-        }
-
-        // ลบภาพยนตร์
-        function deleteMovie() {
-            if(confirm('ต้องการลบภาพยนตร์เรื่องนี้ใช่หรือไม่?')) {
-                const id = document.getElementById('movie-id').value;
-                movies = movies.filter(m => m.id !== Number(id));
-                saveToStorage();
-                closeModal();
-                renderMovies();
-            }
-        }
-
-        // แสดงผลหนัง + กรองค้นหา
-        function renderMovies() {
-            const grid = document.getElementById('movie-grid');
-            const searchQ = document.getElementById('search-input').value.toLowerCase();
-            const genreF = document.getElementById('filter-genre').value.toLowerCase();
-            const statusF = document.getElementById('filter-status').value;
-
-            grid.innerHTML = '';
-            updateStats();
-
-            const filteredMovies = movies.filter(m => {
-                const matchSearch = m.title.toLowerCase().includes(searchQ);
-                const matchGenre = genreF ? m.genre.toLowerCase().includes(genreF) : true;
-                const matchStatus = statusF ? m.status === statusF : true;
-                return matchSearch && matchGenre && matchStatus;
-            });
-
-            filteredMovies.forEach(movie => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.onclick = () => editMovie(movie.id);
-
-                card.innerHTML = `
-                    <div class="badge ${movie.status}" onclick="toggleStatus(event, ${movie.id})">${movie.status}</div>
-                    <div class="poster-wrapper">
-                        <img src="${movie.poster}" alt="${movie.title}">
-                    </div>
-                    <div class="card-info">
-                        <h3 class="card-title serif">${movie.title}</h3>
-                        <div class="card-meta">${movie.year} • ${movie.country} • ${movie.genre}</div>
-                        
-                        <div class="ratings">
-                            <div>IMDb: <span>${movie.imdb || '-'}</span></div>
-                            <div>RT: <span>${movie.rt ? movie.rt+'%' : '-'}</span></div>
-                            <div style="color:var(--accent-color);">Me: <span>${movie.personal || '-'}</span>/10</div>
-                        </div>
-                        
-                        ${movie.review ? `<p style="font-size:0.8rem; color:#666; margin-top:10px; font-style:italic;">"${movie.review}"</p>` : ''}
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // เรียกใช้งานครั้งแรก
+      } catch (err) {
+        state.movies = collectionMovies();
         renderMovies();
-    </script>
+        setStatus(String(err.message), false, true);
+      }
+    }
+
+    async function openDetail(id) {
+      let movie = state.movies.find(m => m.id === id);
+      if (!movie) return;
+
+      openModal("detailModal");
+      els.detailContent.innerHTML = `<div style="padding:40px;text-align:center;color:#a5aec2;">กำลังโหลดรายละเอียด...</div>`;
+
+      try {
+        if (TMDB_API_KEY && !state.personal[String(id)]?.manualOnly) {
+          if (!state.tmdbCache[id]) {
+            const [detail, credits, videos] = await Promise.all([
+              tmdbFetch(`/movie/${id}`),
+              tmdbFetch(`/movie/${id}/credits`),
+              tmdbFetch(`/movie/${id}/videos`)
+            ]);
+
+            const director = (credits.crew || []).find(x => x.job === "Director")?.name || "";
+            const cast = (credits.cast || []).slice(0, 10).map(x => x.name);
+            const trailerObj = (videos.results || []).find(v => v.site === "YouTube" && v.type === "Trailer");
+
+            state.tmdbCache[id] = {
+              runtime: detail.runtime || null,
+              overview: detail.overview || movie.overview || "",
+              director,
+              cast,
+              trailer: trailerObj ? `[youtube.com](https://www.youtube.com/watch?v=${trailerObj.key})` : "",
+              backdrop_path: detail.backdrop_path || movie.backdrop_path || null,
+              poster_path: detail.poster_path || movie.poster_path || null,
+              genres: (detail.genres || []).map(g => g.name),
+              countries: (detail.production_countries || []).map(c => c.name),
+              language: detail.original_language?.toUpperCase() || "-",
+              popularity: detail.popularity || 0,
+              vote_count: detail.vote_count || 0
+            };
+          }
+
+          const extra = state.tmdbCache[id];
+          movie = {
+            ...movie,
+            runtime: extra.runtime,
+            overview: extra.overview,
+            director: extra.director,
+            cast: extra.cast,
+            trailer: extra.trailer,
+            backdrop_path: extra.backdrop_path,
+            poster_path: extra.poster_path,
+            genres: extra.genres,
+            countries: extra.countries,
+            language: extra.language,
+            popularity: extra.popularity,
+            vote_count: extra.vote_count
+          };
+        }
+      } catch (err) {
+      }
+
+      const p = state.personal[String(id)] || {};
+      const status = p.status || movie.personalStatus || "unwatched";
+      const review = p.review || movie.personalReview || "";
+      const castHtml = (movie.cast || []).length
+        ? movie.cast.map(name => `<span class="cast-chip">${escapeHtml(name)}</span>`).join("")
+        : `<span class="small-muted">ยังไม่มีข้อมูลนักแสดง</span>`;
+
+      els.detailContent.innerHTML = `
+        <div class="detail-hero" style="background-image:
+          linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.9)),
+          url('${buildBackdrop(movie.backdrop_path)}');">
+          <div class="detail-grid">
+            <div class="detail-poster">
+              <img src="${buildPoster(movie.poster_path)}" alt="${escapeHtml(movie.title)}" />
+            </div>
+            <div class="detail-info">
+              <h2>${escapeHtml(movie.title)}</h2>
+              <div class="subline">
+                <span>${yearFromDate(movie.release_date)}</span>
+                <span>${movie.runtime ? movie.runtime + " นาที" : "-"}</span>
+                <span>TMDB ${movie.vote_average ? Number(movie.vote_average).toFixed(1) : "-"}</span>
+                <span>${getStatusLabel(status)}</span>
+              </div>
+              <p style="line-height:1.8;color:#d7ddeb;max-width:800px;">${escapeHtml(movie.overview || "ไม่มีเรื่องย่อ")}</p>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
+                <button class="btn btn-primary" onclick="openEditFromDetail(${movie.id})">แก้ไขข้อมูลหนังนี้</button>
+                ${movie.trailer ? `<a class="btn" href="${movie.trailer}" target="_blank" rel="noopener noreferrer">ดูตัวอย่าง</a>` : ""}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-content">
+          <div style="display:grid;gap:22px;">
+            <div class="panel">
+              <h3>เรื่องย่อ</h3>
+              <div style="line-height:1.8;color:#d8deea;">${escapeHtml(movie.overview || "ไม่มีเรื่องย่อ")}</div>
+            </div>
+
+            <div class="panel">
+              <h3>นักแสดง</h3>
+              <div class="cast-list">${castHtml}</div>
+            </div>
+
+            <div class="panel">
+              <h3>รีวิวส่วนตัว</h3>
+              <div class="kv">
+                <div class="kv-item">
+                  <div class="kv-k">สถานะ</div>
+                  <div class="kv-v">${getStatusLabel(status)}</div>
+                </div>
+                <div class="kv-item">
+                  <div class="kv-k">คะแนนส่วนตัว</div>
+                  <div class="kv-v">${p.personalRating ? Number(p.personalRating).toFixed(1) : "-"}</div>
+                </div>
+                <div class="kv-item">
+                  <div class="kv-k">รีวิว</div>
+                  <div class="kv-v">${escapeHtml(review || "ยังไม่มีรีวิว")}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:22px;">
+            <div class="panel">
+              <h3>รายละเอียดหนัง</h3>
+              <div class="kv">
+                <div class="kv-item"><div class="kv-k">ผู้กำกับ</div><div class="kv-v">${escapeHtml(movie.director || "-")}</div></div>
+                <div class="kv-item"><div class="kv-k">ประเทศ</div><div class="kv-v">${escapeHtml((movie.countries || []).join(", ") || "-")}</div></div>
+                <div class="kv-item"><div class="kv-k">ภาษา</div><div class="kv-v">${escapeHtml(movie.language || "-")}</div></div>
+                <div class="kv-item"><div class="kv-k">Popularity</div><div class="kv-v">${movie.popularity ? Number(movie.popularity).toFixed(1) : "-"}</div></div>
+                <div class="kv-item"><div class="kv-k">Vote count</div><div class="kv-v">${movie.vote_count || "-"}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function openEditFromDetail(id) {
+      closeModal("detailModal");
+      const movie = state.movies.find(m => m.id === id);
+      if (movie) openEditModal(movie);
+    }
+
+    function openEditModal(movie) {
+      document.getElementById("editMovieId").value = movie.id || Date.now();
+      document.getElementById("editTitleVisible").value = movie.title || "";
+      document.getElementById("editYear").value = yearFromDate(movie.release_date) !== "-" ? yearFromDate(movie.release_date) : "";
+      document.getElementById("editStatus").value = movie.personalStatus || "unwatched";
+      document.getElementById("editPersonalRating").value = movie.personalRating ?? "";
+      document.getElementById("editTmdbRatingVisible").value = movie.vote_average || "";
+      document.getElementById("editPosterVisible").value = movie.poster_path ? buildPoster(movie.poster_path) : "";
+      document.getElementById("editBackdropVisible").value = movie.backdrop_path ? buildBackdrop(movie.backdrop_path) : "";
+      document.getElementById("editOverviewVisible").value = movie.overview || "";
+      document.getElementById("editCastVisible").value = (movie.cast || []).join(", ");
+      document.getElementById("editDirectorVisible").value = movie.director || "";
+      document.getElementById("editRuntimeVisible").value = movie.runtime || "";
+      document.getElementById("editTrailerVisible").value = movie.trailer || "";
+      document.getElementById("editReview").value = movie.personalReview || "";
+      openModal("editModal");
+    }
+
+    function openManualAdd() {
+      document.getElementById("editMovieId").value = Date.now();
+      document.getElementById("editTitleVisible").value = "";
+      document.getElementById("editYear").value = "";
+      document.getElementById("editStatus").value = "watchlist";
+      document.getElementById("editPersonalRating").value = "";
+      document.getElementById("editTmdbRatingVisible").value = "";
+      document.getElementById("editPosterVisible").value = "";
+      document.getElementById("editBackdropVisible").value = "";
+      document.getElementById("editOverviewVisible").value = "";
+      document.getElementById("editCastVisible").value = "";
+      document.getElementById("editDirectorVisible").value = "";
+      document.getElementById("editRuntimeVisible").value = "";
+      document.getElementById("editTrailerVisible").value = "";
+      document.getElementById("editReview").value = "";
+      openModal("editModal");
+    }
+
+    document.getElementById("editForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const id = String(document.getElementById("editMovieId").value).trim();
+      const title = document.getElementById("editTitleVisible").value.trim();
+      const year = document.getElementById("editYear").value.trim();
+      const status = document.getElementById("editStatus").value;
+      const personalRatingRaw = document.getElementById("editPersonalRating").value.trim();
+      const tmdbRatingRaw = document.getElementById("editTmdbRatingVisible").value.trim();
+      const posterUrl = document.getElementById("editPosterVisible").value.trim();
+      const backdropUrl = document.getElementById("editBackdropVisible").value.trim();
+      const overview = document.getElementById("editOverviewVisible").value.trim();
+      const castText = document.getElementById("editCastVisible").value.trim();
+      const director = document.getElementById("editDirectorVisible").value.trim();
+      const runtimeRaw = document.getElementById("editRuntimeVisible").value.trim();
+      const trailer = document.getElementById("editTrailerVisible").value.trim();
+      const review = document.getElementById("editReview").value.trim();
+
+      if (!title) {
+        alert("กรุณาใส่ชื่อหนัง");
+        return;
+      }
+
+      state.personal[id] = {
+        id: Number(id),
+        title,
+        poster_path: posterUrl || null,
+        backdrop_path: backdropUrl || null,
+        release_date: year ? `${year}-01-01` : "",
+        vote_average: tmdbRatingRaw ? Number(tmdbRatingRaw) : 0,
+        overview,
+        cast: castText ? castText.split(",").map(x => x.trim()).filter(Boolean) : [],
+        director,
+        runtime: runtimeRaw ? Number(runtimeRaw) : null,
+        trailer,
+        status,
+        personalRating: personalRatingRaw ? Number(personalRatingRaw) : null,
+        review,
+        manualOnly: true
+      };
+
+      savePersonalData();
+
+      if (state.browseMode === "collection") {
+        state.movies = collectionMovies();
+        renderMovies();
+      }
+
+      closeModal("editModal");
+      setStatus("บันทึกหนังเองสำเร็จ", true, false);
+    });
+
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+      state.search = e.target.value;
+      renderMovies();
+    });
+
+    document.getElementById("browseMode").addEventListener("change", (e) => {
+      state.browseMode = e.target.value;
+      loadByMode();
+    });
+
+    document.getElementById("statusFilter").addEventListener("change", (e) => {
+      state.statusFilter = e.target.value;
+      renderMovies();
+    });
+
+    document.getElementById("reloadBtn").addEventListener("click", loadByMode);
+    document.getElementById("testTmdbBtn").addEventListener("click", async () => {
+      state.browseMode = "trending";
+      document.getElementById("browseMode").value = "trending";
+      await loadByMode();
+    });
+    document.getElementById("addMovieBtn").addEventListener("click", openManualAdd);
+    document.getElementById("fabBtn").addEventListener("click", openManualAdd);
+
+    loadByMode();
+  </script>
 </body>
 </html>
